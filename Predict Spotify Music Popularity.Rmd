@@ -1,0 +1,18 @@
+---
+title: "Predict Music Popularity"
+author: "Christy Hui"
+date: "12/14/2021"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+From here: https://www.kaggle.com/subhaskumarray/spotify-tracks-data?select=tracks.csv
+
+Information about columns: https://developer.spotify.com/documentation/web-api/reference/#/operations/get-audio-features
+
+``` {r}
+
+```
