@@ -9,10 +9,86 @@ output: pdf_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-From here: https://www.kaggle.com/subhaskumarray/spotify-tracks-data?select=tracks.csv
+At the beginning of the rise of Spotify and streaming music, I wondered if a computer can tell if a song is popular or not just by listening to it. While not exactly the same, with my new found knowledge of machine learning and modeling techniques, this old wonder of mine has come back. Can we use machine learning techniques to tell whether or not a song will be a banger?
 
-Information about columns: https://developer.spotify.com/documentation/web-api/reference/#/operations/get-audio-features
+The data set can be found here on Kaggle:
+
+https://www.kaggle.com/subhaskumarray/spotify-tracks-data?select=tracks.csv
+
+Further information about the columns can be found here:
+
+https://developer.spotify.com/documentation/web-api/reference/#/operations/get-audio-features
+
+Before modeling, it's always important to look at a data set and make sense of what it is. 
 
 ``` {r}
-
+tracks = read.csv("tracks.csv")
 ```
+
+```{r}
+names(tracks)
+dim(tracks)
+sum(is.na(tracks))
+```
+
+The column names are as listed above. 
+
+By looking at the dimensions, we can see there are 586672 observations. This means there is information on 586672 songs!
+
+How many of the columns are numeric? How many are characters?
+
+``` {r}
+column.types = c()
+for (i in 1:ncol(tracks)) {
+  column.types = append(column.types, typeof(tracks[, i]))
+}
+column.types
+```
+
+The data set is also extremely easy to work with. There are 5 character types. The rest, however, are integers. In fact, for our analysis, the "id" and "name" of a song is irrelevant to how well a song can/will perform. Thus, we should delete the two variables.
+
+```  {r}
+tracks = tracks[, !names(tracks) %in% c("id", "name")] # drop column names by their names
+names(tracks)
+column.types = c()
+for (i in 1:ncol(tracks)) {
+  column.types = append(column.types, typeof(tracks[, i]))
+}
+column.types
+```
+
+I am a bit curious about the variables themselves. It can be helpful to create a density plot for the numerical predictors. What are the numeric variables?
+
+``` {r}
+numeric.cols = names(tracks)[column.types != "character"]
+numeric.cols
+```
+
+With the names, let's look at the density plots. What are the distributions of the numeric variables?
+
+``` {r}
+library(ggplot2)
+library(gridExtra)
+ggplot(tracks, aes(x = duration_ms)) + geom_density(aes(color = popularity))
+ggplot(tracks, aes(x = explicit)) + geom_density(aes(color = popularity))
+ggplot(tracks, aes(x = danceability)) + geom_density(aes(color = popularity))
+ggplot(tracks, aes(x = energy)) + geom_density(aes(color = popularity))
+ggplot(tracks, aes(x = key)) + geom_density(aes(color = popularity))
+ggplot(tracks, aes(x = loudness)) + geom_density(aes(color = popularity))
+ggplot(tracks, aes(x = mode)) + geom_density(aes(color = popularity))
+ggplot(tracks, aes(x = speechiness)) + geom_density(aes(color = popularity))
+ggplot(tracks, aes(x = acousticness)) + geom_density(aes(color = popularity))
+ggplot(tracks, aes(x = instrumentalness)) + geom_density(aes(color = popularity))
+ggplot(tracks, aes(x = liveness)) + geom_density(aes(color = popularity))
+ggplot(tracks, aes(x = valence)) + geom_density(aes(color = popularity))
+ggplot(tracks, aes(x = tempo)) + geom_density(aes(color = popularity))
+ggplot(tracks, aes(x = time_signature)) + geom_density(aes(color = popularity))
+```
+
+
+
+
+
+
+
+
