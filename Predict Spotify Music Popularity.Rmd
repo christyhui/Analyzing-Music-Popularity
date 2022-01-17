@@ -1,5 +1,5 @@
 ---
-title: "Predict Music Popularity"
+title: "Exploring Spotify Data"
 author: "Christy Hui"
 date: "12/14/2021"
 output: pdf_document
@@ -9,17 +9,27 @@ output: pdf_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-At the beginning of the rise of Spotify and streaming music, I wondered if a computer can tell if a song is popular or not just by listening to it. While not exactly the same, with my new found knowledge of machine learning and modeling techniques, this old wonder of mine has come back. Can we use machine learning techniques to tell whether or not a song will be a banger?
+## Introduction
+
+When I first started listening to music, I wondered what makes a song good? Why do I like this song more than another? Why do I like this song while another person dislikes it? What aspects of a song make it popular? Why do some songs seem to be popular in one decade, and then non-popular the next?
+
+I found a Spotify data set online that used the Spotify Web API to describe songs. And although the data set does not rank each song in terms of popularity, it does rank the artist's popularity. What trends can I find?
 
 The data set can be found here on Kaggle:
 
 https://www.kaggle.com/subhaskumarray/spotify-tracks-data?select=tracks.csv
 
+For the sake of this project, the data was downloaded in January 2022, with Version 1 (the initial release) being the latest version of the data set. July 25, 2021 seems to be the version of the data set we use in this project.
+
 Further information about the columns can be found here:
 
 https://developer.spotify.com/documentation/web-api/reference/#/operations/get-audio-features
 
-Before modeling, it's always important to look at a data set and make sense of what it is. 
+https://developer.spotify.com/documentation/web-api/reference/#/operations/get-several-tracks
+
+## What does the data look like?
+
+### Pre-Processing Data and a Closer Look
 
 ``` {r}
 tracks = read.csv("tracks.csv")
@@ -33,7 +43,7 @@ sum(is.na(tracks))
 
 The column names are as listed above. 
 
-By looking at the dimensions, we can see there are 586672 observations. This means there is information on 586672 songs!
+By looking at the dimensions, we can see there are 586672 observations. This means there is information on 586672 songs.
 
 How many of the columns are numeric? How many are characters?
 
@@ -45,17 +55,24 @@ for (i in 1:ncol(tracks)) {
 column.types
 ```
 
-The data set is also extremely easy to work with. There are 5 character types. The rest, however, are integers. In fact, for our analysis, the "id" and "name" of a song is irrelevant to how well a song can/will perform. Thus, we should delete the two variables.
+The data set is seems to be easy to work with because there are only 5 character types. The rest, however, are integers. In fact, for our analysis, the "id" of a song is irrelevant to how well an artist does (and it is also undecipherable to our eyes). Thus, we should delete the id variable.
 
 ```  {r}
-tracks = tracks[, !names(tracks) %in% c("id", "name")] # drop column names by their names
+tracks = tracks[, !names(tracks) %in% "id"] # drop column names by their names
 names(tracks)
+```
+
+For the sake of consistency, let's reiterate which columns are numeric and which are categorical.
+
+``` {r}
 column.types = c()
 for (i in 1:ncol(tracks)) {
   column.types = append(column.types, typeof(tracks[, i]))
 }
 column.types
 ```
+
+### Numeric Variable Analysis
 
 I am a bit curious about the variables themselves. It can be helpful to create a density plot for the numerical predictors. What are the numeric variables?
 
@@ -69,21 +86,152 @@ With the names, let's look at the density plots. What are the distributions of t
 ``` {r}
 library(ggplot2)
 library(gridExtra)
-ggplot(tracks, aes(x = duration_ms)) + geom_density(aes(color = popularity))
-ggplot(tracks, aes(x = explicit)) + geom_density(aes(color = popularity))
-ggplot(tracks, aes(x = danceability)) + geom_density(aes(color = popularity))
-ggplot(tracks, aes(x = energy)) + geom_density(aes(color = popularity))
-ggplot(tracks, aes(x = key)) + geom_density(aes(color = popularity))
-ggplot(tracks, aes(x = loudness)) + geom_density(aes(color = popularity))
-ggplot(tracks, aes(x = mode)) + geom_density(aes(color = popularity))
-ggplot(tracks, aes(x = speechiness)) + geom_density(aes(color = popularity))
-ggplot(tracks, aes(x = acousticness)) + geom_density(aes(color = popularity))
-ggplot(tracks, aes(x = instrumentalness)) + geom_density(aes(color = popularity))
-ggplot(tracks, aes(x = liveness)) + geom_density(aes(color = popularity))
-ggplot(tracks, aes(x = valence)) + geom_density(aes(color = popularity))
-ggplot(tracks, aes(x = tempo)) + geom_density(aes(color = popularity))
-ggplot(tracks, aes(x = time_signature)) + geom_density(aes(color = popularity))
+grid.arrange(
+  ggplot(tracks, aes(x = duration_ms)) + geom_density(),
+  ggplot(tracks, aes(x = explicit)) + geom_density(),
+  ggplot(tracks, aes(x = danceability)) + geom_density(),
+  ggplot(tracks, aes(x = energy)) + geom_density(),
+  ggplot(tracks, aes(x = key)) + geom_density(),
+  ggplot(tracks, aes(x = loudness)) + geom_density(),
+  ggplot(tracks, aes(x = mode)) + geom_density(),
+  ggplot(tracks, aes(x = speechiness)) + geom_density(),
+  ggplot(tracks, aes(x = acousticness)) + geom_density(),
+  ggplot(tracks, aes(x = instrumentalness)) + geom_density(),
+  ggplot(tracks, aes(x = liveness)) + geom_density(),
+  ggplot(tracks, aes(x = valence)) + geom_density(),
+  ggplot(tracks, aes(x = tempo)) + geom_density(),
+  ggplot(tracks, aes(x = time_signature)) + geom_density())
 ```
+
+Looking at the density plots, it is clear that some of these variables aren't truly numeric (but actually categorical). Let's look at the "weird ones" first.
+
+First is the "explicit" variable. The density plot seems to indicate that there are only 0s and 1s. 
+
+``` {r}
+ggplot(tracks, aes(x = explicit)) + geom_density()
+```
+
+Upon closer inspection, this variable isn't numeric at all (but categorical).
+
+``` {r}
+unique(tracks$explicit)
+```
+
+With only 0s and 1s, this column determines whether or not the song is explicit or not. 0s mean the song is not explicit and 1s mean the song is explicit. This was found not in the web API reference sheet (as posted above), but in an article about the web API by Spotify themselves: 
+
+https://developer.spotify.com/community/news/2013/02/12/spotify-apps-js-api-0-2-8-and-web-api-explicit-flag/
+
+So, "explicit" really should be categorical. Let's change it so that it does look categorical:
+
+``` {r}
+tracks$explicit = replace(tracks$explicit, tracks$explicit != 0, "Explicit")
+tracks$explicit = replace(tracks$explicit, tracks$explicit == 0, "Not Explicit")
+unique(tracks$explicit)
+tracks$explicit = as.factor(tracks$explicit) # factor so easier to work with later
+```
+
+The key variable's density plots also looks weird due to the vast amounts of oscillation. 
+
+``` {r}
+ggplot(tracks, aes(x = key)) + geom_density()
+```
+
+Upon closer inspection, we also see that the "key" variable is categorical.
+
+``` {r}
+unique(tracks$key)
+```
+
+Per the Spotify web API reference webpage, the "key" represents the "key the track is in. Integers map to pitches using standard Pitch Class notation." This is inherently categorical. We will keep the variables as is, but change the type to factors (so we do not mistake "key" for numeric in the future).
+
+``` {r}
+tracks$key = as.factor(tracks$key)
+unique(tracks$key)
+```
+
+The density plot for the "mode" variable looks similar to the "explicit" variable. The density plot seems to indicate that only 0s and 1s are present.
+
+``` {r}
+ggplot(tracks, aes(x = mode)) + geom_density()
+unique(tracks$mode)
+```
+
+Just like the "explicit" variable, the "mode" variable is just a bunch of 0s and 1s. The reference site explains that mode "indicates the modality (major or minor) of a track... Major is represented by 1 and minor is 0."
+
+To make things perhaps more readable, let's change the column:
+
+``` {r}
+tracks$mode = replace(tracks$mode, tracks$mode != 0, "Major")
+tracks$mode = replace(tracks$mode, tracks$mode == 0, "Minor")
+unique(tracks$mode)
+tracks$mode = as.factor(tracks$mode) # factor so easier to work with later
+```
+
+The "instrumentalness" value looks weird as well because it dips down to 0 so quickly. 
+
+``` {r}
+ggplot(tracks, aes(x = instrumentalness)) + geom_density()
+```
+
+Upon closer review, the numbers for "instrumentalness" are between 0 and 1 (but still represent numbers):
+
+``` {r}
+head(tracks$instrumentalness)
+```
+
+The reference site states that the "instrumentalness" variable is a prediction number, predicting "whether a track contains no vocals... Values above 0.5 are intended to represent instrumental tracks, but confidence is higher as the value approaches 1.0."
+
+Since this variable is numeric, it should not be changed. However, it should be noted that the density plot for the "instrumentalness" variable is not very helpful.
+
+"Time_signature" is the final variable that looks abnormal. 
+
+``` {r}
+ggplot(tracks, aes(time_signature)) + geom_density()
+```
+
+There only seem to be peaks at certain intervals, which may indicate that the time_signature variable is not numeric.
+
+``` {r}
+unique(tracks$time_signature)
+```
+
+The reference site explains that the "time_signature" variable is "a notational convention to specify how many beats are in each bar (or measure)." So, this is numeric variable; however, because of the discrete nature of the variable, it looks categorical. Looking at the density plot, a large portion of the data has a time signature of 4. Interestingly, this seems to indicate that most songs have 4 beats per measure. Very few songs have 5 or 1 beats, and none of the songs have 2 beats. Some have 0 beats per measure (which seems fishy to me).
+
+Looking closer, the reference site explains that the "time_signature" variable "ranges from 3 to 7 indicating time signatures of "3/4", to "7/4"." This is in direct opposition to the variables found (since we have numbers below 3 and do not have 6 or 7). This may indicate that the "time_signature" variable is inaccurate or the description is inaccurate. Nonetheless, both are inconsistent, meaning that we might have to refrain from looking at the variable.
+
+To recap, we have learned that three variables (explicit, key, mode) were disguised at numeric; however, they should be viewed as categorical. Also, the "instrumentalness" variable is continuous and numeric, but because it is only between 0 and 1, it may look small compared to other variables. Finally, the "time_signature" variable is also numeric, but it is discrete, so it may look weird when compared to other numeric variables (of which are continuous). In fact, the numbers in "time_signature" is inconsistent with the Spotify reference web page, indicating that it may be good to not look at the variable when analyzing the data.
+
+Now that we have looked at data that seem inconsistent/strange, we should take a quick look at the other numeric variables that seem right. Firstly is popularity, which is of particular interest to me.
+
+``` {r}
+ggplot(tracks, aes(x = popularity)) + geom_density()
+```
+
+Looking at the density plot, there seem to be a lot of artists with a popularity of 0. Generally, it seems that as popularity increases, the number of artists decreases. Interestingly, however, popularity and density of artists rise at around approximately 15-35 before strictly decreasing from there. Looking at the numbers directly, I find it interesting that only very few artists have a popularity of 90-100.
+
+``` {r}
+table(tracks$popularity)
+```
+
+Who are these artists?
+
+``` {r}
+tracks$artists[tracks$popularity == 97]
+tracks$artists[tracks$popularity == 98]
+tracks$artists[tracks$popularity == 99]
+tracks$artists[tracks$popularity == 100]
+tracks$artists[tracks$popularity == 97:100]
+```
+
+
+
+
+
+
+
+
+
+
 
 
 
