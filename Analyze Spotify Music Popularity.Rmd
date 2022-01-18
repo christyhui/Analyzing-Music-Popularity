@@ -55,10 +55,10 @@ for (i in 1:ncol(tracks)) {
 column.types
 ```
 
-The data set is seems to be easy to work with because there are only 5 character types. The rest, however, are integers. In fact, for our analysis, the "id" of a song is irrelevant to how well an artist does (and it is also undecipherable to our eyes). Thus, we should delete the id variable.
+The data set is seems to be easy to work with because there are only 5 character types. The rest, however, are integers. In fact, for our analysis, the "id" of a song is irrelevant to how well an artist does (and it is also undecipherable to our eyes). The id of the artist is also irrelevant and undecipherable. Thus, we should delete the id and id_artist variables.
 
 ```  {r}
-tracks = tracks[, !names(tracks) %in% "id"] # drop column names by their names
+tracks = tracks[, !names(tracks) %in% c("id", "id_artists")] # drop column names by their names
 names(tracks)
 ```
 
@@ -213,17 +213,18 @@ Looking at the density plot, there seem to be a lot of artists with a popularity
 table(tracks$popularity)
 ```
 
-Who are these artists?
+Who are these artists? And what are the song names?
 
 ``` {r}
-tracks$artists[tracks$popularity == 97]
-tracks$artists[tracks$popularity == 98]
-tracks$artists[tracks$popularity == 99]
-tracks$artists[tracks$popularity == 100]
-tracks$artists[tracks$popularity == 97:100]
+tracks$artists[tracks$popularity %in% 90:100]
+tracks$name[tracks$popularity %in% 90:100]
 ```
 
+In fact, maybe we can find out more. What about the other columns? Maybe we can find a trend that makes these songs more popular than the rest.
 
+``` {r}
+tracks[tracks$popularity %in% 90:100, ]
+```
 
 
 
