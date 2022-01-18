@@ -1,5 +1,5 @@
-# Predicting-Music-Popularity
- Predict music popularity using spotify data set
+# Analyzing-Music-Popularity
+ Analyzing music using spotify data set
 
 The data set in question for this project could not be uploaded into GitHub. It can, instead, be found here: https://www.kaggle.com/subhaskumarray/spotify-tracks-data?select=tracks.csv
 
