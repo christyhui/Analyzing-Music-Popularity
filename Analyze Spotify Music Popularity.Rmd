@@ -45,14 +45,16 @@ The column names are as listed above.
 
 By looking at the dimensions, we can see there are 586672 observations. This means there is information on 586672 songs.
 
-How many of the columns are numeric? How many are characters?
+How many of the columns are numeric? How many are characters? We can do this by iterating the typeof() function on each column of the tracks data set. We initialize the column to be a character list of 20, just to help R speed up the process a bit.
 
 ``` {r}
-column.types = c()
+column_types = character(20L)
 for (i in 1:ncol(tracks)) {
-  column.types = append(column.types, typeof(tracks[, i]))
+  column_types[i] = typeof(tracks[, i])
 }
-column.types
+column_types
+
+# better way to do this is with: lapply(tracks, typeof)
 ```
 
 The data set is seems to be easy to work with because there are only 5 character types. The rest, however, are integers. In fact, for our analysis, the "id" of a song is irrelevant to how well an artist does (and it is also undecipherable to our eyes). The id of the artist is also irrelevant and undecipherable. Thus, we should delete the id and id_artist variables.
@@ -62,23 +64,33 @@ tracks = tracks[, !names(tracks) %in% c("id", "id_artists")] # drop column names
 names(tracks)
 ```
 
+One last thing: I'm interested in the year that each song is released (rather than the full release date). Since the date is so easily formatted in YYYY-MM-DD format, we can use the substr() function to extract the year.
+
+``` {r}
+tracks$release_year = as.numeric(substr(tracks$release_date, 1, 4))
+```
+
 For the sake of consistency, let's reiterate which columns are numeric and which are categorical.
 
 ``` {r}
-column.types = c()
+column_types = character(19L)
 for (i in 1:ncol(tracks)) {
-  column.types = append(column.types, typeof(tracks[, i]))
+  column_types[i] = typeof(tracks[, i])
 }
-column.types
+column_types
+
+# again, better way to do this is using lapply/sapply
 ```
 
 ### Numeric Variable Analysis
 
+#### Data Cleaning and Inspection
+
 I am a bit curious about the variables themselves. It can be helpful to create a density plot for the numerical predictors. What are the numeric variables?
 
 ``` {r}
-numeric.cols = names(tracks)[column.types != "character"]
-numeric.cols
+numeric_cols = names(tracks)[column_types != "character"]
+numeric_cols
 ```
 
 With the names, let's look at the density plots. What are the distributions of the numeric variables?
@@ -103,13 +115,9 @@ grid.arrange(
   ggplot(tracks, aes(x = time_signature)) + geom_density())
 ```
 
-Looking at the density plots, it is clear that some of these variables aren't truly numeric (but actually categorical). Let's look at the "weird ones" first.
+Looking at the density plots, it is clear that some of these variables aren't truly numeric (but actually categorical). Let's look at these weird ones first.
 
 First is the "explicit" variable. The density plot seems to indicate that there are only 0s and 1s. 
-
-``` {r}
-ggplot(tracks, aes(x = explicit)) + geom_density()
-```
 
 Upon closer inspection, this variable isn't numeric at all (but categorical).
 
@@ -117,9 +125,7 @@ Upon closer inspection, this variable isn't numeric at all (but categorical).
 unique(tracks$explicit)
 ```
 
-With only 0s and 1s, this column determines whether or not the song is explicit or not. 0s mean the song is not explicit and 1s mean the song is explicit. This was found not in the web API reference sheet (as posted above), but in an article about the web API by Spotify themselves: 
-
-https://developer.spotify.com/community/news/2013/02/12/spotify-apps-js-api-0-2-8-and-web-api-explicit-flag/
+With only 0s and 1s, this column determines whether or not the song is explicit or not. 0s mean the song is not explicit and 1s mean the song is explicit. 
 
 So, "explicit" really should be categorical. Let's change it so that it does look categorical:
 
@@ -132,17 +138,13 @@ tracks$explicit = as.factor(tracks$explicit) # factor so easier to work with lat
 
 The key variable's density plots also looks weird due to the vast amounts of oscillation. 
 
-``` {r}
-ggplot(tracks, aes(x = key)) + geom_density()
-```
-
 Upon closer inspection, we also see that the "key" variable is categorical.
 
 ``` {r}
 unique(tracks$key)
 ```
 
-Per the Spotify web API reference webpage, the "key" represents the "key the track is in. Integers map to pitches using standard Pitch Class notation." This is inherently categorical. We will keep the variables as is, but change the type to factors (so we do not mistake "key" for numeric in the future).
+Per the Spotify web API reference webpage, the "key" represents the "key the track is in. Integers map to pitches using standard Pitch Class notation." This is inherently categorical. We will keep the variables as is, but change the type to factors.
 
 ``` {r}
 tracks$key = as.factor(tracks$key)
@@ -152,7 +154,6 @@ unique(tracks$key)
 The density plot for the "mode" variable looks similar to the "explicit" variable. The density plot seems to indicate that only 0s and 1s are present.
 
 ``` {r}
-ggplot(tracks, aes(x = mode)) + geom_density()
 unique(tracks$mode)
 ```
 
@@ -169,10 +170,6 @@ tracks$mode = as.factor(tracks$mode) # factor so easier to work with later
 
 The "instrumentalness" value looks weird as well because it dips down to 0 so quickly. 
 
-``` {r}
-ggplot(tracks, aes(x = instrumentalness)) + geom_density()
-```
-
 Upon closer review, the numbers for "instrumentalness" are between 0 and 1 (but still represent numbers):
 
 ``` {r}
@@ -184,10 +181,6 @@ The reference site states that the "instrumentalness" variable is a prediction n
 Since this variable is numeric, it should not be changed. However, it should be noted that the density plot for the "instrumentalness" variable is not very helpful.
 
 "Time_signature" is the final variable that looks abnormal. 
-
-``` {r}
-ggplot(tracks, aes(time_signature)) + geom_density()
-```
 
 There only seem to be peaks at certain intervals, which may indicate that the time_signature variable is not numeric.
 
@@ -201,7 +194,9 @@ Looking closer, the reference site explains that the "time_signature" variable "
 
 To recap, we have learned that three variables (explicit, key, mode) were disguised at numeric; however, they should be viewed as categorical. Also, the "instrumentalness" variable is continuous and numeric, but because it is only between 0 and 1, it may look small compared to other variables. Finally, the "time_signature" variable is also numeric, but it is discrete, so it may look weird when compared to other numeric variables (of which are continuous). In fact, the numbers in "time_signature" is inconsistent with the Spotify reference web page, indicating that it may be good to not look at the variable when analyzing the data.
 
-Now that we have looked at data that seem inconsistent/strange, we should take a quick look at the other numeric variables that seem right. Firstly is popularity, which is of particular interest to me.
+#### Let's look at some trends!
+
+Now that we have looked at data that seem inconsistent/strange, we should take a look at the other numeric variables that seem right. Firstly is popularity, which is of particular interest to me.
 
 ``` {r}
 ggplot(tracks, aes(x = popularity)) + geom_density()
@@ -220,23 +215,45 @@ tracks$artists[tracks$popularity %in% 90:100]
 tracks$name[tracks$popularity %in% 90:100]
 ```
 
-In fact, maybe we can find out more. What about the other columns? Maybe we can find a trend that makes these songs more popular than the rest.
+Plotting and visualizing data is extremely helpful in data analysis. How is popularity related to the variables of, for example, danceability and energy?
+
+Before we observe the plot, note that we have way too many observations for a simple plot to be useful. We wouldn't be able to tell what's happening with 500000+ data points. Let's shrink the data by sampling 1000 random observations and then look at the plots.
 
 ``` {r}
-tracks[tracks$popularity %in% 90:100, ]
+set.seed(213)
+tracks_sampled = tracks[sample(dim(tracks)[1], 1000, replace = FALSE), ]
+dim(tracks_sampled)
 ```
 
+``` {r}
+ggplot(tracks_sampled, aes(x = danceability, y = popularity)) + geom_point(size = 0.1)
 
+ggplot(tracks_sampled, aes(x = energy, y = popularity)) + geom_point(size = 0.1)
+```
 
+There doesn't really seem to be much of a correlation between danceability and popularity. Between popularity and energy, however, there seems to be a slight positive correlation.
 
+In fact, it may be useful to look at the correlation between all variables. Let's create a heat map with all of the relevant numeric variables.
 
+``` {r}
+tracks_numeric = tracks[, c("popularity", "duration_ms", "danceability", "energy", "loudness", "speechiness", "acousticness", "instrumentalness", "liveness", "valence", "tempo", "release_year")]
+library(corrplot)
+corrplot(cor(tracks_numeric),
+         method = "color",
+         col= colorRampPalette(c("lightpink","red", "blue", "black"))(10))
+```
 
+Notice how the correlation both the correlation between danceability and popularity is close to 0. The correlaion between energy and popularity, however, is a little higher than 0 (indicating a positive correlation between the two).
 
+Upon closer inspection, I see a lot more in this heat map worth noting. For example, there seems to be a very high correlation between loudness and energy. This makes sense, since the louder a song is, the more energy they seem to eminate. Acousticness and energy seem to have a very low correlation. This also makes sense, since the more acoustic a song is, the less energy the song seems to give. 
 
+I'm particularly interested in the release year. Notice how we have some pretty strong correlations between the release year and loudness (which indicates that as the years have progressed, the louder our music has become). On the other hand, it seems as though the release year and acousticness have a pretty strong negative correlation (which indicates that has the years have progressed, the more acoustic our music has become).
 
+I want to plot this to get a closer look between the aforementioned variables.
 
+``` {r}
 
-
+```
 
 
 
