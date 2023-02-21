@@ -1,4 +1,4 @@
-# Project has been discontinued
+# Project has been discontinued and is not finished
 
 # Analyzing-Music-Popularity
  Analyzing music using spotify data set
